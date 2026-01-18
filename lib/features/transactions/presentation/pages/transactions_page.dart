@@ -130,7 +130,15 @@ class _TransactionsPageState extends State<TransactionsPage> {
           
           // Lista de transacciones
           Expanded(
-            child: BlocBuilder<TransactionBloc, TransactionState>(
+            child: RefreshIndicator(
+              onRefresh: () async {
+                context.read<TransactionBloc>().add(
+                  const LoadRecentTransactions(limit: 50),
+                );
+                // Wait a bit for the data to load
+                await Future.delayed(const Duration(milliseconds: 500));
+              },
+              child: BlocBuilder<TransactionBloc, TransactionState>(
               builder: (context, state) {
                 if (state is TransactionLoading) {
                   return const Center(
@@ -247,6 +255,7 @@ class _TransactionsPageState extends State<TransactionsPage> {
 
                 return const SizedBox.shrink();
               },
+            ),
             ),
           ),
         ],

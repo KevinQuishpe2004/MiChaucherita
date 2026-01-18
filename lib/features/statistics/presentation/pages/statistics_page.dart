@@ -310,7 +310,7 @@ class _StatisticsPageState extends State<StatisticsPage>
                   amount: '\$${entry.value.toStringAsFixed(2)}',
                   icon: _getCategoryIcon(category?.icon),
                   color: _getCategoryColor(category?.color),
-                  isExpense: true,
+                  isExpense: selectedType == 'expense',
                   percentage: percentage.toDouble(),
                   animationDelay: sortedCategories.indexOf(entry) * 100,
                 ),

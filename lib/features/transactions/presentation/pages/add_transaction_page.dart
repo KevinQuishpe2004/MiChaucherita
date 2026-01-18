@@ -1126,6 +1126,10 @@ class _AddTransactionPageState extends State<AddTransactionPage>
       ),
     );
     
+    // Force refresh all data after transaction
+    context.read<TransactionBloc>().add(const LoadRecentTransactions(limit: 50));
+    context.read<AccountBloc>().add(const LoadAccounts());
+    
     context.pop();
   }
 

@@ -40,6 +40,7 @@ class SupabaseService {
       email: email,
       password: password,
       data: {'name': name},
+      emailRedirectTo: null, // Disable email confirmation
     );
     return response;
   }
