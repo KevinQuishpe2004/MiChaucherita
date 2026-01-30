@@ -1,3 +1,5 @@
+import 'package:supabase_flutter/supabase_flutter.dart';
+
 /// Configuración de Supabase - ARCHIVO DE EJEMPLO
 /// 
 /// INSTRUCCIONES PARA CONFIGURAR:
@@ -12,8 +14,6 @@
 /// - NO compartas el archivo supabase_config.dart real (está en .gitignore)
 /// - Solo comparte este archivo de ejemplo
 /// - Cada desarrollador debe crear su propia copia del archivo
-
-import 'package:supabase_flutter/supabase_flutter.dart';
 
 class SupabaseConfig {
   /// URL de tu proyecto de Supabase

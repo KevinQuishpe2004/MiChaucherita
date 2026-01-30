@@ -153,18 +153,6 @@ flutter build apk --release
 # App Bundle (recomendado para Play Store)
 flutter build appbundle --release
 ```
-
-### 4. Preparar Assets para Play Store
-
-- **Screenshots**: Toma capturas de pantalla en dispositivos de diferentes tamaños
-- **Icono**: Debe ser 512x512px
-- **Feature Graphic**: 1024x500px
-- **Descripción corta**: Máximo 80 caracteres
-- **Descripción completa**: Hasta 4000 caracteres
-- **Política de privacidad**: Sube [PRIVACY_POLICY.md](PRIVACY_POLICY.md) a una URL pública
-
-## 🔧 Configuración
-
 ### Versión de la App
 
 Edita `pubspec.yaml`:
@@ -249,10 +237,6 @@ flutter test integration_test
 - [ ] Implementar notificaciones de recordatorios
 - [ ] Agregar biometría para login
 
-## 📝 Licencia
-
-[Elige tu licencia - MIT, Apache 2.0, etc.]
-
 ## 👥 Contribuir
 
 Las contribuciones son bienvenidas. Por favor:
@@ -263,10 +247,9 @@ Las contribuciones son bienvenidas. Por favor:
 5. Abre un Pull Request
 
 ## 📧 Contacto
+a
+**Desarrolladores**: Grupo 4 - Aplicaiones moviles
 
-**Desarrollador**: [Tu Nombre]
-**Email**: [tu_email@ejemplo.com]
-**Website**: [tu_website]
 
 ## 🙏 Agradecimientos
 
@@ -276,5 +259,3 @@ Las contribuciones son bienvenidas. Por favor:
 - [fl_chart](https://pub.dev/packages/fl_chart)
 
 ---
-
-**Made with ❤️ and Flutter**

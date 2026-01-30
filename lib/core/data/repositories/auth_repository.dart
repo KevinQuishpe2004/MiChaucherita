@@ -1,6 +1,7 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../domain/models/user.dart' as app_user;
 import '../../services/supabase_service.dart';
+import '../../services/logger_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 /// Repository for authentication using Supabase
@@ -44,10 +45,10 @@ class AuthRepository {
         lastLoginAt: DateTime.now(),
       );
     } on AuthException catch (e) {
-      print('❌ AuthException: ${e.message} - Status: ${e.statusCode}');
-      throw Exception(_getAuthErrorMessage(e));
+      AppLogger.error('AuthException en registro: ${e.message} - Status: ${e.statusCode}');
+      throw Exception(_getRegisterErrorMessage(e));
     } catch (e) {
-      print('❌ Error desconocido al registrar: $e');
+      AppLogger.error('Error desconocido al registrar', e);
       throw Exception('Error al registrar: $e');
     }
   }
@@ -82,8 +83,10 @@ class AuthRepository {
         lastLoginAt: DateTime.now(),
       );
     } on AuthException catch (e) {
-      throw Exception(_getAuthErrorMessage(e));
+      AppLogger.error('AuthException en login: ${e.message} - Status: ${e.statusCode}');
+      throw Exception(_getLoginErrorMessage(e));
     } catch (e) {
+      AppLogger.error('Error desconocido en login', e);
       throw Exception('Error al iniciar sesión: $e');
     }
   }
@@ -139,39 +142,71 @@ class AuthRepository {
     await prefs.remove('userId');
   }
 
-  /// Traducir errores de autenticación
-  String _getAuthErrorMessage(AuthException error) {
+  /// Traducir errores de autenticación para LOGIN
+  String _getLoginErrorMessage(AuthException error) {
     final message = error.message.toLowerCase();
     
-    // Manejar mensajes específicos de Supabase
+    // Errores específicos de login
+    if (message.contains('invalid login credentials') || 
+        message.contains('invalid_credentials')) {
+      return 'Correo o contraseña incorrectos.';
+    }
+    if (message.contains('email not confirmed')) {
+      return 'Debes confirmar tu correo antes de iniciar sesión. Revisa tu bandeja de entrada.';
+    }
+    if (message.contains('user not found')) {
+      return 'No existe una cuenta con este correo. ¿Quieres registrarte?';
+    }
+    if (message.contains('too many requests') || error.statusCode == '429') {
+      return 'Demasiados intentos. Espera unos minutos.';
+    }
+    
+    // Fallback por código de estado para login
+    switch (error.statusCode) {
+      case '400':
+        return 'Correo o contraseña incorrectos.';
+      case '401':
+        return 'Correo o contraseña incorrectos.';
+      case '403':
+        return 'Acceso denegado. Verifica tu correo.';
+      case '422':
+        return 'Correo o contraseña incorrectos.';
+      default:
+        return 'Error al iniciar sesión. Intenta de nuevo.';
+    }
+  }
+
+  /// Traducir errores de autenticación para REGISTRO
+  String _getRegisterErrorMessage(AuthException error) {
+    final message = error.message.toLowerCase();
+    
+    // Manejar mensajes específicos de Supabase para registro
     if (message.contains('user already registered')) {
       return 'Este correo ya está registrado. Intenta iniciar sesión.';
     }
     if (message.contains('email not confirmed')) {
-      return 'Debes confirmar tu correo. Revisa tu bandeja de entrada.';
+      return 'Se envió un correo de confirmación. Revisa tu bandeja de entrada.';
     }
     if (message.contains('invalid email')) {
       return 'El formato del correo es inválido.';
     }
+    if (message.contains('password') && message.contains('weak')) {
+      return 'La contraseña es muy débil. Usa al menos 6 caracteres.';
+    }
     if (message.contains('password')) {
       return 'La contraseña debe tener al menos 6 caracteres.';
     }
-    if (message.contains('invalid login credentials')) {
-      return 'Correo o contraseña incorrectos.';
-    }
     
-    // Fallback por código de estado
+    // Fallback por código de estado para registro
     switch (error.statusCode) {
       case '400':
         return 'Datos inválidos. Verifica tu correo y contraseña.';
-      case '401':
-        return 'Correo o contraseña incorrectos.';
       case '422':
-        return 'El correo ya está registrado.';
+        return 'Este correo ya está registrado. Intenta iniciar sesión.';
       case '429':
         return 'Demasiados intentos. Intenta más tarde.';
       default:
-        return error.message;
+        return 'Error al registrar. Intenta de nuevo.';
     }
   }
 

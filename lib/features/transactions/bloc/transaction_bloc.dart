@@ -182,39 +182,36 @@ class TransactionBloc extends Bloc<TransactionEvent, TransactionState> {
     Emitter<TransactionState> emit,
   ) async {
     try {
-      // Obtener una categoría por defecto (usamos la primera de ingresos)
-      final categories = await _categoryRepository.getByType('income');
-      if (categories.isEmpty) {
-        emit(const TransactionError('No hay categorías disponibles'));
-        return;
-      }
-      final defaultCategoryId = categories.first.id;
+      // Obtener la categoría de transferencia o usar una por defecto
+      final categories = await _categoryRepository.getAll();
+      // Buscar una categoría específica para transferencias, o usar la primera disponible
+      final transferCategory = categories.firstWhere(
+        (c) => c.name.toLowerCase().contains('transfer') || c.name.toLowerCase().contains('otros'),
+        orElse: () => categories.first,
+      );
       
-      // Crear dos transacciones: gasto de origen, ingreso a destino
-      final expense = Transaction(
+      // Crear una sola transacción de tipo 'transfer'
+      // El monto se resta de la cuenta origen y se suma a la cuenta destino
+      final transfer = Transaction(
         id: null,
         accountId: event.fromAccountId,
-        categoryId: defaultCategoryId,
-        type: 'expense',
+        categoryId: transferCategory.id,
+        type: 'transfer',
         amount: event.amount,
-        description: event.description ?? 'Transferencia',
+        description: event.description ?? 'Transferencia entre cuentas',
         date: event.transactionDate,
         createdAt: DateTime.now(),
       );
       
-      final income = Transaction(
-        id: null,
-        accountId: event.toAccountId,
-        categoryId: defaultCategoryId,
-        type: 'income',
-        amount: event.amount,
-        description: event.description ?? 'Transferencia',
-        date: event.transactionDate,
-        createdAt: DateTime.now(),
-      );
+      // Crear la transacción de transferencia
+      await _transactionRepository.create(transfer);
       
-      await _transactionRepository.create(expense);
-      await _transactionRepository.create(income);
+      // Actualizar el balance de la cuenta destino manualmente
+      // La cuenta origen se actualiza automáticamente en el repositorio
+      await _transactionRepository.updateAccountBalanceForTransfer(
+        event.toAccountId,
+        event.amount,
+      );
 
       // Recargar las transacciones recientes
       add(const LoadRecentTransactions());

@@ -86,8 +86,8 @@ class BalanceCard extends StatelessWidget {
                     color: Colors.white.withOpacity(0.2),
                     shape: BoxShape.circle,
                   ),
-                  child: const Icon(
-                    Icons.more_horiz,
+                  child: Icon(
+                    onTap != null ? Icons.arrow_forward_ios : Icons.more_horiz,
                     color: Colors.white70,
                     size: AppSizes.iconSm,
                   ),

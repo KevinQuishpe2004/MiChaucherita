@@ -58,14 +58,10 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         password: event.password,
       );
 
-      if (user != null) {
-        await _sessionService.saveSession(user);
-        emit(AuthAuthenticated(user));
-      } else {
-        emit(const AuthError('Correo o contraseña incorrectos'));
-      }
+      await _sessionService.saveSession(user);
+      emit(AuthAuthenticated(user));
     } catch (e) {
-      emit(AuthError(e.toString()));
+      emit(AuthError(e.toString().replaceAll('Exception: ', '')));
     }
   }
 
@@ -82,14 +78,10 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         name: event.name,
       );
 
-      if (user != null) {
-        await _sessionService.saveSession(user);
-        emit(AuthAuthenticated(user));
-      } else {
-        emit(const AuthError('Error al registrar usuario'));
-      }
+      await _sessionService.saveSession(user);
+      emit(AuthAuthenticated(user));
     } catch (e) {
-      emit(AuthError(e.toString()));
+      emit(AuthError(e.toString().replaceAll('Exception: ', '')));
     }
   }
 
@@ -99,6 +91,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   ) async {
     try {
       emit(const AuthLoading());
+      await _authRepository.logout();
       await _sessionService.logout();
       emit(const AuthUnauthenticated());
     } catch (e) {

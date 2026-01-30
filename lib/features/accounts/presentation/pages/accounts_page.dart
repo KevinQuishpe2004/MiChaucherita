@@ -174,7 +174,12 @@ class _AccountsPageState extends State<AccountsPage> {
               );
             }
 
-            return ListView(
+            return RefreshIndicator(
+              onRefresh: () async {
+                context.read<AccountBloc>().add(const LoadAccounts());
+                await Future.delayed(const Duration(milliseconds: 500));
+              },
+              child: ListView(
               padding: const EdgeInsets.all(AppSizes.md),
               children: [
                 // Tarjeta de balance total
@@ -224,6 +229,11 @@ class _AccountsPageState extends State<AccountsPage> {
                           _showAddTransactionDialog(context, account.id!, 'expense');
                         }
                       },
+                      onTransfer: () {
+                        if (account.id != null) {
+                          _showAddTransactionDialog(context, account.id!, 'transfer');
+                        }
+                      },
                     ),
                   );
                 }),
@@ -239,6 +249,7 @@ class _AccountsPageState extends State<AccountsPage> {
                 
                 const SizedBox(height: 120),
               ],
+              ),
             );
           }
 
@@ -246,33 +257,6 @@ class _AccountsPageState extends State<AccountsPage> {
         },
       ),
     );
-  }
-
-  IconData _getIconData(String iconName) {
-    switch (iconName) {
-      case 'bank':
-        return Iconsax.bank;
-      case 'wallet':
-      case 'wallet_1':
-        return Iconsax.wallet_1;
-      case 'money':
-        return Iconsax.money;
-      case 'card':
-        return Iconsax.card;
-      case 'safe_home':
-      case 'save_2':
-        return Iconsax.safe_home;
-      default:
-        return Iconsax.wallet_3;
-    }
-  }
-
-  Color _getColor(String colorHex) {
-    try {
-      return Color(int.parse(colorHex.replaceAll('#', '0xFF')));
-    } catch (e) {
-      return AppColors.primary;
-    }
   }
 }
 

@@ -276,7 +276,7 @@ class _AddTransactionPageState extends State<AddTransactionPage>
                     child: Text(
                       '\$',
                       style: TextStyle(
-                        color: Colors.white70,
+                        color: Color(0xFF1A237E), // indigo.shade900
                         fontSize: 28,
                         fontWeight: FontWeight.w500,
                       ),
@@ -293,16 +293,16 @@ class _AddTransactionPageState extends State<AddTransactionPage>
                           FilteringTextInputFormatter.allow(RegExp(r'^\d+\.?\d{0,2}')),
                         ],
                         autofocus: true,
-                        style: const TextStyle(
-                          color: Colors.white,
+                        style: TextStyle(
+                          color: Colors.indigo.shade900,
                           fontSize: 42,
                           fontWeight: FontWeight.bold,
                           letterSpacing: -1,
                         ),
-                        decoration: const InputDecoration(
+                        decoration: InputDecoration(
                           hintText: '0.00',
                           hintStyle: TextStyle(
-                            color: Colors.white38,
+                            color: Colors.indigo.shade300,
                             fontSize: 42,
                             fontWeight: FontWeight.bold,
                           ),

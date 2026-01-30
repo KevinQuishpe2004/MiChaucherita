@@ -10,8 +10,12 @@ import '../../../../core/data/repositories/category_repository.dart';
 import '../../../../core/domain/models/category.dart';
 import '../../../../core/widgets/widgets.dart';
 import '../../../accounts/bloc/account_bloc.dart';
+import '../../../accounts/bloc/account_event.dart';
 import '../../../accounts/bloc/account_state.dart';
+import '../../../auth/bloc/auth_bloc.dart';
+import '../../../auth/bloc/auth_state.dart';
 import '../../../transactions/bloc/transaction_bloc.dart';
+import '../../../transactions/bloc/transaction_event.dart';
 import '../../../transactions/bloc/transaction_state.dart';
 import '../widgets/dashboard_header.dart';
 import '../widgets/quick_actions.dart';
@@ -34,6 +38,13 @@ class _DashboardPageState extends State<DashboardPage> {
   void initState() {
     super.initState();
     _loadCategories();
+    _refreshData();
+  }
+
+  void _refreshData() {
+    // Refrescar cuentas y transacciones
+    context.read<AccountBloc>().add(const LoadAccounts());
+    context.read<TransactionBloc>().add(const LoadRecentTransactions(limit: 20));
   }
 
   Future<void> _loadCategories() async {
@@ -93,15 +104,31 @@ class _DashboardPageState extends State<DashboardPage> {
         bottom: false,
         child: CustomScrollView(
           slivers: [
-            // Header
+            // Header con nombre de usuario
             SliverToBoxAdapter(
-              child: DashboardHeader(
-                userName: 'Usuario',
-                onNotificationTap: () {},
+              child: BlocBuilder<AuthBloc, AuthState>(
+                builder: (context, authState) {
+                  String userName = 'Usuario';
+                  if (authState is AuthAuthenticated) {
+                    userName = authState.user.name;
+                  }
+                  return DashboardHeader(
+                    userName: userName,
+                    onNotificationTap: () {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Sin notificaciones nuevas'),
+                          duration: Duration(seconds: 2),
+                        ),
+                      );
+                    },
+                    onProfileTap: () => context.go('/settings'),
+                  );
+                },
               ),
             ),
             
-            // Balance Card
+            // Balance Card - Navega a cuentas al tocar
             SliverToBoxAdapter(
               child: Padding(
                 padding: const EdgeInsets.symmetric(horizontal: AppSizes.md),
@@ -110,12 +137,16 @@ class _DashboardPageState extends State<DashboardPage> {
                     final balance = state is AccountLoaded 
                         ? '\$${state.totalBalance.toStringAsFixed(2)}'
                         : '\$0.00';
+                    final accountCount = state is AccountLoaded 
+                        ? state.accounts.length 
+                        : 0;
                     
                     return BalanceCard(
                       title: AppStrings.totalBalance,
                       balance: balance,
-                      subtitle: 'Actualizado ahora',
+                      subtitle: '$accountCount cuenta${accountCount != 1 ? 's' : ''} activa${accountCount != 1 ? 's' : ''}',
                       icon: Iconsax.wallet_3,
+                      onTap: () => context.go('/accounts'),
                     );
                   },
                 ),
@@ -218,7 +249,7 @@ class _DashboardPageState extends State<DashboardPage> {
                         scrollDirection: Axis.horizontal,
                         padding: const EdgeInsets.symmetric(horizontal: AppSizes.md),
                         itemCount: accounts.length,
-                        separatorBuilder: (_, __) => const SizedBox(width: AppSizes.md),
+                        separatorBuilder: (context, index) => const SizedBox(width: AppSizes.md),
                         itemBuilder: (context, index) {
                           final account = accounts[index];
                           return AccountCard(
@@ -227,7 +258,7 @@ class _DashboardPageState extends State<DashboardPage> {
                             icon: _getAccountIcon(account.type),
                             color: _getAccountColor(account.type),
                             animationDelay: index * 100,
-                            onTap: () {},
+                            onTap: () => _showAccountDetails(account),
                           );
                         },
                       ),
@@ -285,28 +316,45 @@ class _DashboardPageState extends State<DashboardPage> {
                         borderRadius: BorderRadius.circular(AppSizes.radiusLg),
                         border: Border.all(color: AppColors.border),
                       ),
-                      child: Column(
-                        children: [
-                          for (var i = 0; i < transactions.length; i++) ...[
-                            if (i > 0) const Divider(height: 1, indent: 72),
-                            Builder(
-                              builder: (context) {
-                                final transaction = transactions[i];
-                                final category = _getCategoryById(transaction.categoryId);
-                                return TransactionTile(
-                                  title: transaction.description ?? 'Sin título',
-                                  category: category?.name ?? 'General',
-                                  amount: '\$${transaction.amount.toStringAsFixed(2)}',
-                                  date: _formatDate(transaction.date),
-                                  type: _mapTransactionType(transaction.type),
-                                  categoryIcon: _getCategoryIcon(category?.icon),
-                                  categoryColor: _getCategoryColor(category?.color),
-                                  animationDelay: i * 50,
-                                );
-                              },
-                            ),
-                          ],
-                        ],
+                      child: BlocBuilder<AccountBloc, AccountState>(
+                        builder: (context, accountState) {
+                          // Crear un mapa de cuentas para búsqueda rápida
+                          final accountsMap = <String, String>{};
+                          if (accountState is AccountLoaded) {
+                            for (final account in accountState.accounts) {
+                              if (account.id != null) {
+                                accountsMap[account.id!] = account.name;
+                              }
+                            }
+                          }
+                          
+                          return Column(
+                            children: [
+                              for (var i = 0; i < transactions.length; i++) ...[
+                                if (i > 0) const Divider(height: 1, indent: 72),
+                                Builder(
+                                  builder: (context) {
+                                    final transaction = transactions[i];
+                                    final category = _getCategoryById(transaction.categoryId);
+                                    final accountName = accountsMap[transaction.accountId];
+                                    
+                                    return TransactionTile(
+                                      title: transaction.description ?? 'Sin título',
+                                      category: category?.name ?? 'General',
+                                      amount: '\$${transaction.amount.toStringAsFixed(2)}',
+                                      date: _formatDate(transaction.date),
+                                      type: _mapTransactionType(transaction.type),
+                                      categoryIcon: _getCategoryIcon(category?.icon),
+                                      categoryColor: _getCategoryColor(category?.color),
+                                      accountName: accountName,
+                                      animationDelay: i * 50,
+                                    );
+                                  },
+                                ),
+                              ],
+                            ],
+                          );
+                        },
                       ),
                     ).animate().fadeIn(duration: 400.ms, delay: 200.ms);
                   }
@@ -385,60 +433,171 @@ class _DashboardPageState extends State<DashboardPage> {
         return AppColors.primary;
     }
   }
-}
 
-/// Tarjeta para agregar nueva cuenta
-class _AddAccountCard extends StatelessWidget {
-  final VoidCallback onTap;
-
-  const _AddAccountCard({required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        width: 160,
-        padding: const EdgeInsets.all(AppSizes.md),
-        decoration: BoxDecoration(
-          color: AppColors.primarySoft,
-          borderRadius: BorderRadius.circular(AppSizes.radiusLg),
-          border: Border.all(
-            color: AppColors.primary.withOpacity(0.3),
-            width: 2,
-            strokeAlign: BorderSide.strokeAlignInside,
-          ),
+  void _showAccountDetails(dynamic account) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (context) => Container(
+        decoration: const BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(AppSizes.radiusXl)),
         ),
+        padding: const EdgeInsets.all(AppSizes.lg),
         child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // Handle
+            Center(
+              child: Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: AppColors.border,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+            const SizedBox(height: AppSizes.lg),
+            
+            // Icono y nombre
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(AppSizes.md),
+                  decoration: BoxDecoration(
+                    color: _getAccountColor(account.type).withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(AppSizes.radiusMd),
+                  ),
+                  child: Icon(
+                    _getAccountIcon(account.type),
+                    color: _getAccountColor(account.type),
+                    size: 28,
+                  ),
+                ),
+                const SizedBox(width: AppSizes.md),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        account.name,
+                        style: const TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.textPrimary,
+                        ),
+                      ),
+                      Text(
+                        _getAccountTypeName(account.type),
+                        style: const TextStyle(
+                          fontSize: 14,
+                          color: AppColors.textSecondary,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: AppSizes.xl),
+            
+            // Balance
             Container(
-              padding: const EdgeInsets.all(AppSizes.md),
+              width: double.infinity,
+              padding: const EdgeInsets.all(AppSizes.lg),
               decoration: BoxDecoration(
-                color: AppColors.primary.withOpacity(0.1),
-                shape: BoxShape.circle,
+                gradient: LinearGradient(
+                  colors: [
+                    _getAccountColor(account.type).withOpacity(0.1),
+                    _getAccountColor(account.type).withOpacity(0.05),
+                  ],
+                ),
+                borderRadius: BorderRadius.circular(AppSizes.radiusMd),
               ),
-              child: const Icon(
-                Iconsax.add,
-                color: AppColors.primary,
-                size: AppSizes.iconLg,
+              child: Column(
+                children: [
+                  const Text(
+                    'Balance actual',
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                  const SizedBox(height: AppSizes.xs),
+                  Text(
+                    '\$${account.balance.toStringAsFixed(2)}',
+                    style: TextStyle(
+                      fontSize: 32,
+                      fontWeight: FontWeight.bold,
+                      color: _getAccountColor(account.type),
+                    ),
+                  ),
+                ],
               ),
             ),
-            const SizedBox(height: AppSizes.sm),
-            const Text(
-              'Nueva Cuenta',
-              style: TextStyle(
-                fontSize: AppSizes.fontMd,
-                fontWeight: FontWeight.w600,
-                color: AppColors.primary,
-              ),
+            const SizedBox(height: AppSizes.lg),
+            
+            // Acciones
+            Row(
+              children: [
+                Expanded(
+                  child: ElevatedButton.icon(
+                    onPressed: () {
+                      Navigator.pop(context);
+                      context.go('/accounts');
+                    },
+                    icon: const Icon(Iconsax.edit_2),
+                    label: const Text('Editar'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.primary,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: AppSizes.md),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: AppSizes.md),
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: () {
+                      Navigator.pop(context);
+                      context.go('/transactions');
+                    },
+                    icon: const Icon(Iconsax.receipt_text),
+                    label: const Text('Historial'),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: AppColors.primary,
+                      padding: const EdgeInsets.symmetric(vertical: AppSizes.md),
+                      side: const BorderSide(color: AppColors.primary),
+                    ),
+                  ),
+                ),
+              ],
             ),
+            const SizedBox(height: AppSizes.md),
           ],
         ),
       ),
-    ).animate(delay: 300.ms).fadeIn().scale(
-          begin: const Offset(0.95, 0.95),
-          end: const Offset(1, 1),
-        );
+    );
+  }
+
+  String _getAccountTypeName(String type) {
+    switch (type.toLowerCase()) {
+      case 'cash':
+      case 'efectivo':
+        return 'Efectivo';
+      case 'bank':
+      case 'banco':
+        return 'Cuenta bancaria';
+      case 'card':
+      case 'tarjeta':
+        return 'Tarjeta de crédito';
+      case 'savings':
+      case 'ahorros':
+        return 'Cuenta de ahorros';
+      default:
+        return 'Cuenta';
+    }
   }
 }

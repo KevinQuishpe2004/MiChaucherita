@@ -5,9 +5,308 @@ import 'package:go_router/go_router.dart';
 import 'package:iconsax/iconsax.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/constants/app_sizes.dart';
+import '../../../../core/data/repositories/category_repository.dart';
+import '../../../../core/domain/models/category.dart';
 import '../../../auth/bloc/auth_bloc.dart';
 import '../../../auth/bloc/auth_event.dart';
 import '../../../auth/bloc/auth_state.dart';
+
+// Funciones helper para diálogos
+void _showCategoriesDialog(BuildContext context) {
+  showDialog(
+    context: context,
+    builder: (context) => const _CategoriesDialog(),
+  );
+}
+
+void _showCurrencyInfo(BuildContext context) {
+  showDialog(
+    context: context,
+    builder: (context) => AlertDialog(
+      title: Row(
+        children: [
+          Icon(Iconsax.money, color: AppColors.primary),
+          const SizedBox(width: 8),
+          const Text('Moneda'),
+        ],
+      ),
+      content: const Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Moneda actual: USD (\$)',
+            style: TextStyle(fontWeight: FontWeight.bold),
+          ),
+          SizedBox(height: 12),
+          Text(
+            'La aplicación utiliza el dólar estadounidense (USD) como moneda predeterminada para todas las transacciones y balances.',
+          ),
+          SizedBox(height: 8),
+          Text(
+            'El soporte para múltiples monedas estará disponible en futuras versiones.',
+            style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
+          ),
+        ],
+      ),
+      actions: [
+        FilledButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Entendido'),
+        ),
+      ],
+    ),
+  );
+}
+
+void _showAboutDialog(BuildContext context) {
+  showDialog(
+    context: context,
+    builder: (context) => AlertDialog(
+      title: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: AppColors.primarySoft,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: const Text('💰', style: TextStyle(fontSize: 24)),
+          ),
+          const SizedBox(width: 12),
+          const Text('MiChaucherita'),
+        ],
+      ),
+      content: const Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('Versión 1.0.0'),
+          SizedBox(height: 12),
+          Text(
+            'Una aplicación moderna de gestión de finanzas personales.',
+            style: TextStyle(color: AppColors.textSecondary),
+          ),
+          SizedBox(height: 16),
+          Text(
+            'Desarrollado con Flutter + Supabase',
+            style: TextStyle(fontSize: 12, color: AppColors.textHint),
+          ),
+          SizedBox(height: 4),
+          Text(
+            '© 2025 - Proyecto Académico EPN',
+            style: TextStyle(fontSize: 12, color: AppColors.textHint),
+          ),
+        ],
+      ),
+      actions: [
+        FilledButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Cerrar'),
+        ),
+      ],
+    ),
+  );
+}
+
+void _showHelpDialog(BuildContext context) {
+  showDialog(
+    context: context,
+    builder: (context) => AlertDialog(
+      title: Row(
+        children: [
+          Icon(Iconsax.message_question, color: AppColors.primary),
+          const SizedBox(width: 8),
+          const Text('Ayuda y Soporte'),
+        ],
+      ),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          _HelpItem(
+            icon: Iconsax.wallet_add,
+            title: 'Crear cuentas',
+            description: 'Ve a Cuentas y presiona + para agregar una nueva cuenta bancaria, de efectivo o tarjeta.',
+          ),
+          const Divider(),
+          _HelpItem(
+            icon: Iconsax.receipt_add,
+            title: 'Registrar transacciones',
+            description: 'Usa el botón flotante (+) en el dashboard para agregar ingresos o gastos.',
+          ),
+          const Divider(),
+          _HelpItem(
+            icon: Iconsax.chart_2,
+            title: 'Ver estadísticas',
+            description: 'Accede a la sección de estadísticas para ver gráficos de tus finanzas.',
+          ),
+        ],
+      ),
+      actions: [
+        FilledButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Entendido'),
+        ),
+      ],
+    ),
+  );
+}
+
+class _HelpItem extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final String description;
+
+  const _HelpItem({
+    required this.icon,
+    required this.title,
+    required this.description,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, color: AppColors.primary, size: 20),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
+                const SizedBox(height: 4),
+                Text(
+                  description,
+                  style: const TextStyle(fontSize: 13, color: AppColors.textSecondary),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _CategoriesDialog extends StatefulWidget {
+  const _CategoriesDialog();
+
+  @override
+  State<_CategoriesDialog> createState() => _CategoriesDialogState();
+}
+
+class _CategoriesDialogState extends State<_CategoriesDialog> {
+  final CategoryRepository _categoryRepository = CategoryRepository();
+  List<Category> _incomeCategories = [];
+  List<Category> _expenseCategories = [];
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadCategories();
+  }
+
+  Future<void> _loadCategories() async {
+    try {
+      final income = await _categoryRepository.getByType('income');
+      final expense = await _categoryRepository.getByType('expense');
+      setState(() {
+        _incomeCategories = income;
+        _expenseCategories = expense;
+        _isLoading = false;
+      });
+    } catch (e) {
+      setState(() => _isLoading = false);
+    }
+  }
+
+  Color _getColorFromHex(String? hexColor) {
+    if (hexColor == null) return Colors.grey;
+    final hex = hexColor.replaceAll('#', '');
+    return Color(int.parse('FF$hex', radix: 16));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: Row(
+        children: [
+          Icon(Iconsax.category, color: AppColors.primary),
+          const SizedBox(width: 8),
+          const Text('Categorías'),
+        ],
+      ),
+      content: SizedBox(
+        width: double.maxFinite,
+        height: 400,
+        child: _isLoading
+            ? const Center(child: CircularProgressIndicator())
+            : DefaultTabController(
+                length: 2,
+                child: Column(
+                  children: [
+                    TabBar(
+                      tabs: const [
+                        Tab(text: 'Ingresos'),
+                        Tab(text: 'Gastos'),
+                      ],
+                      labelColor: AppColors.primary,
+                      indicatorColor: AppColors.primary,
+                    ),
+                    const SizedBox(height: 8),
+                    Expanded(
+                      child: TabBarView(
+                        children: [
+                          _buildCategoryList(_incomeCategories, AppColors.income),
+                          _buildCategoryList(_expenseCategories, AppColors.expense),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+      ),
+      actions: [
+        FilledButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Cerrar'),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildCategoryList(List<Category> categories, Color typeColor) {
+    if (categories.isEmpty) {
+      return const Center(child: Text('No hay categorías'));
+    }
+    return ListView.builder(
+      itemCount: categories.length,
+      itemBuilder: (context, index) {
+        final category = categories[index];
+        return ListTile(
+          leading: Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: _getColorFromHex(category.color).withOpacity(0.2),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Icon(
+              Iconsax.category,
+              color: _getColorFromHex(category.color),
+              size: 20,
+            ),
+          ),
+          title: Text(category.name),
+          dense: true,
+        );
+      },
+    );
+  }
+}
 
 /// Página de configuración
 class SettingsPage extends StatelessWidget {
@@ -35,12 +334,9 @@ class SettingsPage extends StatelessWidget {
               _SettingsTile(
                 icon: Iconsax.category,
                 title: 'Categorías',
-                subtitle: 'Administrar categorías',
+                subtitle: 'Ver categorías disponibles',
                 onTap: () {
-                  // TODO: Implementar página de categorías
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Función en desarrollo')),
-                  );
+                  _showCategoriesDialog(context);
                 },
               ),
               _SettingsTile(
@@ -54,9 +350,7 @@ class SettingsPage extends StatelessWidget {
                 title: 'Moneda',
                 subtitle: 'USD (\$)',
                 onTap: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Función en desarrollo')),
-                  );
+                  _showCurrencyInfo(context);
                 },
               ),
             ],
@@ -69,41 +363,19 @@ class SettingsPage extends StatelessWidget {
             title: 'Apariencia',
             children: [
               _SettingsTile(
-                icon: Iconsax.moon,
-                title: 'Tema oscuro',
-                trailing: Switch(
-                  value: false,
-                  onChanged: (value) {},
-                  activeTrackColor: AppColors.primary,
-                  activeColor: AppColors.primary,
+                icon: Iconsax.sun_1,
+                title: 'Tema',
+                subtitle: 'Claro',
+                trailing: const Icon(
+                  Iconsax.sun_15,
+                  color: AppColors.primary,
                 ),
                 onTap: () {},
               ),
               _SettingsTile(
                 icon: Iconsax.colorfilter,
                 title: 'Color de acento',
-                subtitle: 'Naranja',
-                onTap: () {},
-              ),
-            ],
-          ),
-          
-          const SizedBox(height: AppSizes.lg),
-          
-          // Sección Seguridad
-          _SettingsSection(
-            title: 'Seguridad',
-            children: [
-              _SettingsTile(
-                icon: Iconsax.lock,
-                title: 'Bloqueo de app',
-                subtitle: 'PIN, huella o Face ID',
-                onTap: () {},
-              ),
-              _SettingsTile(
-                icon: Iconsax.shield_tick,
-                title: 'Copia de seguridad',
-                subtitle: 'Exportar datos',
+                subtitle: 'Naranja (predeterminado)',
                 onTap: () {},
               ),
             ],
@@ -119,17 +391,24 @@ class SettingsPage extends StatelessWidget {
                 icon: Iconsax.info_circle,
                 title: 'Versión',
                 subtitle: '1.0.0',
-                onTap: () {},
+                onTap: () => _showAboutDialog(context),
               ),
               _SettingsTile(
                 icon: Iconsax.star,
                 title: 'Calificar app',
-                onTap: () {},
+                onTap: () {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('¡Gracias por tu interés! Próximamente en tiendas'),
+                      duration: Duration(seconds: 2),
+                    ),
+                  );
+                },
               ),
               _SettingsTile(
                 icon: Iconsax.message_question,
                 title: 'Ayuda y soporte',
-                onTap: () {},
+                onTap: () => _showHelpDialog(context),
               ),
             ],
           ),

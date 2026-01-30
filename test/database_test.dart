@@ -134,7 +134,7 @@ void main() {
 
       final now = DateTime.now();
       final yesterday = now.subtract(const Duration(days: 1));
-      final twoDaysAgo = now.subtract(const Duration(days: 2));
+      // twoDaysAgo se usa para tests futuros si se necesitan más rangos
 
       // Crear transacciones en diferentes fechas
       await transactionRepo.create(models.Transaction(

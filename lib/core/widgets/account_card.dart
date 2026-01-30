@@ -99,6 +99,7 @@ class AccountCardLarge extends StatelessWidget {
   final VoidCallback? onTap;
   final VoidCallback? onAddIncome;
   final VoidCallback? onAddExpense;
+  final VoidCallback? onTransfer;
   final int animationDelay;
 
   const AccountCardLarge({
@@ -111,6 +112,7 @@ class AccountCardLarge extends StatelessWidget {
     this.onTap,
     this.onAddIncome,
     this.onAddExpense,
+    this.onTransfer,
     this.animationDelay = 0,
   });
 
@@ -218,6 +220,12 @@ class AccountCardLarge extends StatelessWidget {
                       icon: Icons.remove,
                       color: AppColors.expense,
                       onTap: onAddExpense,
+                    ),
+                    const SizedBox(width: AppSizes.sm),
+                    _ActionButton(
+                      icon: Icons.swap_horiz,
+                      color: AppColors.transfer,
+                      onTap: onTransfer,
                     ),
                   ],
                 ),

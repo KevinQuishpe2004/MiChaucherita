@@ -3,6 +3,7 @@ import '../database_helper.dart';
 import '../database_web.dart';
 import '../../domain/models/transaction.dart';
 import '../../services/supabase_service.dart';
+import '../../services/logger_service.dart';
 
 /// Repository for Transaction CRUD operations
 /// Uses Supabase as primary backend, with local sqflite as fallback for offline mode
@@ -34,7 +35,7 @@ class TransactionRepository {
             .toList();
       }
     } catch (e) {
-      print('⚠️ Error fetching transactions from Supabase: $e');
+      AppLogger.warning('Error fetching transactions from Supabase: $e');
     }
 
     return _getFromLocal(limit: limit);
@@ -68,7 +69,7 @@ class TransactionRepository {
         return Transaction.fromSupabase(response);
       }
     } catch (e) {
-      print('⚠️ Error fetching transaction: $e');
+      AppLogger.warning('Error fetching transaction: $e');
     }
     return null;
   }
@@ -96,7 +97,7 @@ class TransactionRepository {
             .toList();
       }
     } catch (e) {
-      print('⚠️ Error fetching by date range: $e');
+      AppLogger.warning('Error fetching by date range: $e');
     }
 
     // Fallback local
@@ -154,7 +155,7 @@ class TransactionRepository {
         return created;
       }
     } catch (e) {
-      print('❌ Error creating transaction: $e');
+      AppLogger.error('Error creating transaction', e);
       throw Exception('No se pudo crear la transacción: $e');
     }
 
@@ -201,7 +202,7 @@ class TransactionRepository {
         return transaction;
       }
     } catch (e) {
-      print('❌ Error updating transaction: $e');
+      AppLogger.error('Error updating transaction', e);
       throw Exception('No se pudo actualizar la transacción: $e');
     }
 
@@ -230,7 +231,7 @@ class TransactionRepository {
         }
       }
     } catch (e) {
-      print('❌ Error deleting transaction: $e');
+      AppLogger.error('Error deleting transaction', e);
       throw Exception('No se pudo eliminar la transacción: $e');
     }
   }
@@ -247,9 +248,18 @@ class TransactionRepository {
             .single();
 
         final currentBalance = (response['balance'] as num).toDouble();
-        final newBalance = type == 'income'
-            ? currentBalance + amount
-            : currentBalance - amount;
+        double newBalance;
+        
+        if (type == 'income') {
+          newBalance = currentBalance + amount;
+        } else if (type == 'expense') {
+          newBalance = currentBalance - amount;
+        } else if (type == 'transfer') {
+          // Para transferencias, se resta de la cuenta origen
+          newBalance = currentBalance - amount;
+        } else {
+          newBalance = currentBalance;
+        }
 
         // Actualizar balance
         await _supabase.client
@@ -258,7 +268,32 @@ class TransactionRepository {
             .eq('id', accountId);
       }
     } catch (e) {
-      print('⚠️ Error updating account balance: $e');
+      AppLogger.warning('Error updating account balance: $e');
+    }
+  }
+
+  /// Update account balance for transfer destination (adds amount)
+  Future<void> updateAccountBalanceForTransfer(String toAccountId, double amount) async {
+    try {
+      if (_supabase.isAuthenticated) {
+        // Obtener balance actual de la cuenta destino
+        final response = await _supabase.client
+            .from('accounts')
+            .select('balance')
+            .eq('id', toAccountId)
+            .single();
+
+        final currentBalance = (response['balance'] as num).toDouble();
+        final newBalance = currentBalance + amount;
+
+        // Actualizar balance (sumar a la cuenta destino)
+        await _supabase.client
+            .from('accounts')
+            .update({'balance': newBalance})
+            .eq('id', toAccountId);
+      }
+    } catch (e) {
+      AppLogger.warning('Error updating transfer destination balance: $e');
     }
   }
 
@@ -301,8 +336,6 @@ class TransactionRepository {
       return Stream.value([]);
     }
 
-    final userId = _supabase.currentUserId!;
-
     return _supabase.client
         .from('transactions')
         .stream(primaryKey: ['id'])
@@ -321,8 +354,6 @@ class TransactionRepository {
     if (!_supabase.isAuthenticated) {
       return Stream.value([]);
     }
-
-    final userId = _supabase.currentUserId!;
 
     return _supabase.client
         .from('transactions')
@@ -349,7 +380,7 @@ class TransactionRepository {
         return (response as List).length;
       }
     } catch (e) {
-      print('⚠️ Error counting transactions: $e');
+      AppLogger.warning('Error counting transactions: $e');
     }
     return 0;
   }

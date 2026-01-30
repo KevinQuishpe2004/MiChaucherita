@@ -3,6 +3,7 @@ import '../database_helper.dart';
 import '../database_web.dart';
 import '../../domain/models/account.dart';
 import '../../services/supabase_service.dart';
+import '../../services/logger_service.dart';
 
 /// Repository for Account CRUD operations
 /// Uses Supabase as primary backend, with local sqflite as fallback for offline mode
@@ -29,7 +30,7 @@ class AccountRepository {
             .toList();
       }
     } catch (e) {
-      print('⚠️ Error fetching from Supabase, using local: $e');
+      AppLogger.warning('Error fetching from Supabase, using local: $e');
     }
 
     // Fallback to local database
@@ -60,7 +61,7 @@ class AccountRepository {
         return Account.fromSupabase(response);
       }
     } catch (e) {
-      print('⚠️ Error fetching account: $e');
+      AppLogger.warning('Error fetching account: $e');
     }
 
     return null;
@@ -95,7 +96,7 @@ class AccountRepository {
         return created;
       }
     } catch (e) {
-      print('❌ Error creating account in Supabase: $e');
+      AppLogger.error('Error creating account in Supabase', e);
       throw Exception('No se pudo crear la cuenta: $e');
     }
 
@@ -109,7 +110,7 @@ class AccountRepository {
       final db = await _dbHelper!.database;
       await db.insert('accounts', account.toJson());
     } catch (e) {
-      print('⚠️ Error saving to local: $e');
+      AppLogger.warning('Error saving to local: $e');
     }
   }
 
@@ -133,7 +134,7 @@ class AccountRepository {
         return account;
       }
     } catch (e) {
-      print('❌ Error updating account: $e');
+      AppLogger.error('Error updating account', e);
       throw Exception('No se pudo actualizar la cuenta: $e');
     }
 
@@ -150,7 +151,7 @@ class AccountRepository {
             .eq('id', id);
       }
     } catch (e) {
-      print('❌ Error deleting account: $e');
+      AppLogger.error('Error deleting account', e);
       throw Exception('No se pudo eliminar la cuenta: $e');
     }
   }

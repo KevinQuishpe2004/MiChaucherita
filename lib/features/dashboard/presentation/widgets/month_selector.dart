@@ -161,7 +161,8 @@ class _MonthPickerSheet extends StatelessWidget {
           top: Radius.circular(AppSizes.radiusXl),
         ),
       ),
-      child: Column(
+      child: SingleChildScrollView(
+        child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
           const SizedBox(height: AppSizes.md),
@@ -243,6 +244,7 @@ class _MonthPickerSheet extends StatelessWidget {
           ),
           const SizedBox(height: AppSizes.xl),
         ],
+        ),
       ),
     );
   }

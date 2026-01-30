@@ -7,6 +7,8 @@ import 'core/router/app_router.dart';
 import 'core/theme/app_theme.dart';
 import 'core/di/service_locator.dart';
 import 'core/services/supabase_service.dart';
+import 'core/services/logger_service.dart';
+import 'core/services/theme_service.dart';
 import 'core/config/supabase_config.dart';
 import 'features/accounts/bloc/account_bloc.dart';
 import 'features/accounts/bloc/account_event.dart';
@@ -14,6 +16,9 @@ import 'features/transactions/bloc/transaction_bloc.dart';
 import 'features/transactions/bloc/transaction_event.dart';
 import 'features/auth/bloc/auth_bloc.dart';
 import 'features/auth/bloc/auth_event.dart';
+
+// Instancia global del servicio de tema
+final ThemeService themeService = ThemeService();
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -25,12 +30,12 @@ void main() async {
         supabaseUrl: SupabaseConfig.supabaseUrl,
         supabaseAnonKey: SupabaseConfig.supabaseAnonKey,
       );
-      print('✅ Supabase inicializado correctamente');
+      AppLogger.success('Supabase inicializado correctamente');
     } catch (e) {
-      print('❌ Error al inicializar Supabase: $e');
+      AppLogger.error('Error al inicializar Supabase', e);
     }
   } else {
-    print('⚠️ Supabase NO configurado. Agrega tus credenciales en supabase_config.dart');
+    AppLogger.warning('Supabase NO configurado. Agrega tus credenciales en supabase_config.dart');
   }
   
   // Configurar service locator (repositories)
@@ -82,7 +87,6 @@ class MyApp extends StatelessWidget {
         title: 'MiChaucherita',
         debugShowCheckedModeBanner: false,
         theme: AppTheme.lightTheme,
-        darkTheme: AppTheme.darkTheme,
         themeMode: ThemeMode.light,
         routerConfig: AppRouter.router,
       ),
